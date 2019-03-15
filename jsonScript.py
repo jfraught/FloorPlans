@@ -14,34 +14,26 @@ def getJSON(filePathAndName):
         return json.load(fp)
 
 
+
 #Make Excel Function
 
 #def makeWorkbook():
 #def makeWorksheet();
-
-def makeExcel():
-    averageDifferenceAndPercentage()
-    getRooms()
-
-#Helper Functions
-
 #def metersToFeetandInches(meters):
 
-#def groupWalls(wallList):
-    #Wall < 5
-    #5 < Wall 15
-    #15 < Wall < 25
-    #25 < Wall
-
 def formatExcel():
-   
-    #Wall group
     #Room Count
-    getRooms()
+    roomsCount()
     #Wall Count
     wallCount()
-    #Ortho Walls
-    #Corrected Walls
+    #Walls grouped
+    worksheet.write('A3', 'Wall Groups')
+    tupleWallList = groupWalls()
+    worksheet.write('A4', 'Ortho Walls')
+    displayWalls(0, tupleWallList, 3)
+    worksheet.write('A5', 'Corrected Walls')
+    displayWalls(1, tupleWallList, 4)
+    absoluteValueDifference(tupleWallList)
     #Absolute Value Difference
     #Walls by hand
     #Contribution to weight
@@ -54,47 +46,64 @@ def makeFloorPlanList(jsonPlan):
     return floorPlanList
 
 #Wall Functions
-def getWalls(type):
-    #TODO handle if there are two walls of corrected. 
-    floorPlanList = makeFloorPlanList(jsonFloorPlan)
+def getWalls(type): 
     wallsList = []
-
     for floor in floorPlanList:
         if floor["type"] == type:
             walls = floor["walls"]
             for wall in walls:
                 wallsList.append(wall["length"])
-   
-    print("WallCount")
-    print(len(wallsList))
     return wallsList
 
 def fixCorrectedWallsList(correctedWallsList):
     halfListCount = len(correctedWallsList) / 2
     listCount = len(correctedWallsList)
     while listCount > halfListCount:
-        print(listCount - 1)
         del correctedWallsList[listCount - 1]
         listCount -= 1
-    print("Corrected Wall Count")
-    print(halfListCount)
-    print("Wall Count")
-    print(listCount)
     return correctedWallsList
 
 def wallCount():
-    orthoWallsList = getWalls("orthorectified")
-    correctWallsList = getWalls("correctedMeasurment")
-    if len(orthoWallsList) != len(correctWallsList):
-        correctWallsList = fixCorrectedWallsList(correctWallsList)
-    worksheet.write('A3', 'Wall Count')
-    worksheet.write('B3', len(orthoWallsList))
+    worksheet.write('A2', 'Wall Count')
+    worksheet.write('B2', len(orthoWallsList))
 
-def getRooms():
-    floorPlanList = makeFloorPlanList(jsonFloorPlan)
+def groupWalls():
+    tupleWallList = []
+    index = 0
+    for wall in orthoWallsList:
+        walls = (wall, correctWallsList[index])
+        index += 1
+        tupleWallList.append(walls)
+    tupleWallList.sort(key = sortOrtho)
+    return tupleWallList
+
+def sortOrtho(val):
+    return val[0]
+
+def displayWalls(wallType, walls, row):  
+    col = 1
+    for wall in walls:
+        worksheet.write(row, col, wall[wallType])
+        col += 1
+        
+def absoluteValueDifference(tupleWallList):
+    differenceList =[]
+    col = 1
+    worksheet.write(5, 0, 'Absolute Value Difference')
+    for x in range(len(tupleWallList)):
+        tupleAtIndex = tupleWallList[x]
+        orthoWall = tupleAtIndex[0]
+        correctWall = tupleAtIndex[1]
+        difference = abs(orthoWall - correctWall)
+        worksheet.write(5, col, difference)
+        col += 1
+        
+    
+#Room Functions
+
+def roomsCount():
     roomList = []
-    worksheet.write('A2', 'Room Count')
-
+    worksheet.write('A1', 'Room Count')
     roomNumber = 1
     for floor in floorPlanList:
         if floor["type"] == "orthorectified":
@@ -102,18 +111,12 @@ def getRooms():
             for room in rooms:
                 roomNumber += 1
                 roomList.append(room)
-
-    worksheet.write(1, 1, len(roomList))
+    worksheet.write(0, 1, len(roomList))
     print("Room count")
     print(len(roomList))
 
 
-def displayWalls(walls, row):
-    col = 1
-    for wall in walls:
-        worksheet.write(row, col, wall)
-        col += 1
-        print(wall)
+
 
 
 #Main Functions
@@ -159,6 +162,13 @@ def averageDifferenceAndPercentage():
         print("Percentage")
         print(percentage)
 
+#Variables
+floorPlanList = makeFloorPlanList(jsonFloorPlan)
+orthoWallsList = getWalls("orthorectified")
+correctWallsList = getWalls("correctedMeasurment")  
+if len(orthoWallsList) != len(correctWallsList):
+    correctWallsList = fixCorrectedWallsList(correctWallsList)
 
 formatExcel()
+groupWalls()
 workbook.close()
