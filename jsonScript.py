@@ -32,7 +32,7 @@ def formatExcel():
     absoluteValueDifference()
     percentageDifference()
     averageDifference()
-    #Contribution to weight
+    contributionToWeight()
     #Weighted Percentage
     #Weighted Difference Avergage
 
@@ -115,8 +115,29 @@ def averageDifference():
     worksheet.write('A7', 'Average difference')
     worksheet.write(6, 1, difference)
 
-
-
+def contributionToWeight():
+    orthoSum = 0
+    col = 1
+    worksheet.write('A8', 'Contribution to weight')
+    for x in range(len(tupleWallList)):
+        tupleAtIndex = tupleWallList[x]
+        orthoWall = tupleAtIndex[0]
+        if differenceList[x] != 0:
+            orthoSum += orthoWall
+            print("Difference")
+            print(differenceList[x])
+    for x in range(len(tupleWallList)):
+        tupleAtIndex = tupleWallList[x]
+        orthoWall = tupleAtIndex[0]
+        print("OrthoSum")
+        print(orthoSum)
+        print(differenceList[x])
+        difference = differenceList[x]
+        if difference != 0.0:
+            contribution = orthoWall / orthoSum
+            print(contribution)
+            worksheet.write(7, col, contribution)
+        col += 1
 
 #Room Functions
 
