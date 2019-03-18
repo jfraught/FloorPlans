@@ -27,14 +27,14 @@ def formatExcel():
     #Wall Count
     wallCount()
     #Walls grouped
-    worksheet.write('A3', 'Wall Groups')
-    tupleWallList = groupWalls()
-    worksheet.write('A4', 'Ortho Walls')
-    displayWalls(0, tupleWallList, 3)
-    worksheet.write('A5', 'Corrected Walls')
-    displayWalls(1, tupleWallList, 4)
-    absoluteValueDifference(tupleWallList)
+    groupWalls()
+    worksheet.write('A3', 'Ortho Walls')
+    displayWalls(0, tupleWallList, 2)
+    worksheet.write('A4', 'Corrected Walls')
+    displayWalls(1, tupleWallList, 3)
     #Absolute Value Difference
+    absoluteValueDifference()
+    percentageDifference()
     #Walls by hand
     #Contribution to weight
     #Weighted Percentage
@@ -68,14 +68,12 @@ def wallCount():
     worksheet.write('B2', len(orthoWallsList))
 
 def groupWalls():
-    tupleWallList = []
     index = 0
     for wall in orthoWallsList:
         walls = (wall, correctWallsList[index])
         index += 1
         tupleWallList.append(walls)
     tupleWallList.sort(key = sortOrtho)
-    return tupleWallList
 
 def sortOrtho(val):
     return val[0]
@@ -86,19 +84,33 @@ def displayWalls(wallType, walls, row):
         worksheet.write(row, col, wall[wallType])
         col += 1
         
-def absoluteValueDifference(tupleWallList):
-    differenceList =[]
+def absoluteValueDifference():
     col = 1
-    worksheet.write(5, 0, 'Absolute Value Difference')
+    worksheet.write(4, 0, 'Absolute Value Difference')
     for x in range(len(tupleWallList)):
         tupleAtIndex = tupleWallList[x]
         orthoWall = tupleAtIndex[0]
         correctWall = tupleAtIndex[1]
         difference = abs(orthoWall - correctWall)
-        worksheet.write(5, col, difference)
+        differenceList.append(difference)
+        worksheet.write(4, col, difference)
         col += 1
         
-    
+def percentageDifference():
+    worksheet.write(5, 0, 'Percentage Difference')
+    percentageList = []
+    col = 1
+    for x in range(len(tupleWallList)):
+        tupleAtIndex = tupleWallList[x]
+        orthoWall = tupleAtIndex[0]
+        percent = differenceList[x] / orthoWall
+        percentageList.append(percent)
+        worksheet.write(5, col, percent)
+        col += 1
+
+
+
+
 #Room Functions
 
 def roomsCount():
@@ -115,59 +127,15 @@ def roomsCount():
     print("Room count")
     print(len(roomList))
 
-
-
-
-
-#Main Functions
-def averageDifferenceAndPercentage():
-
-    #loop through raw, ortho, and corrected
-
-    orthoWallsList = getWalls("orthorectified")
-    correctWallsList = getWalls("correctedMeasurment")
-    if len(orthoWallsList) != len(correctWallsList):
-        correctWallsList = fixCorrectedWallsList(correctWallsList)
-
-    #find and return average difference in meters
-
-    index = 0
-    differenceList = []
-    wallLengthDifferenceSum = 0
-    orthoWallsLengthSum = 0
-    if len(orthoWallsList) and len(correctWallsList) > 0:
-        print("Ortho")
-        worksheet.write('A3', 'Ortho Walls')
-        displayWalls(orthoWallsList, 2)
-        print("Corrected")
-        worksheet.write('A4', 'Corrected Walls')
-        displayWalls(correctWallsList, 3)
-        for wall in orthoWallsList:
-            difference = correctWallsList[index] - wall
-            orthoWallsLengthSum += wall
-            index += 1
-            wallLengthDifferenceSum += difference
-
-        #Average
-        averageDiff = wallLengthDifferenceSum / len(orthoWallsList)
-        print("Average")
-        worksheet.write('A5', 'Average Difference')
-        worksheet.write('B5', averageDiff)
-        print(averageDiff)
-
-        #Percentage
-        percentage = wallLengthDifferenceSum / orthoWallsLengthSum * 100
-        worksheet.write('A6', 'Percentage Difference')
-        worksheet.write('B6', percentage)
-        print("Percentage")
-        print(percentage)
-
 #Variables
+
 floorPlanList = makeFloorPlanList(jsonFloorPlan)
 orthoWallsList = getWalls("orthorectified")
 correctWallsList = getWalls("correctedMeasurment")  
 if len(orthoWallsList) != len(correctWallsList):
     correctWallsList = fixCorrectedWallsList(correctWallsList)
+tupleWallList = []
+differenceList = []
 
 formatExcel()
 groupWalls()
