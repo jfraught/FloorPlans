@@ -22,20 +22,16 @@ def getJSON(filePathAndName):
 #def metersToFeetandInches(meters):
 
 def formatExcel():
-    #Room Count
     roomsCount()
-    #Wall Count
     wallCount()
-    #Walls grouped
     groupWalls()
     worksheet.write('A3', 'Ortho Walls')
     displayWalls(0, tupleWallList, 2)
     worksheet.write('A4', 'Corrected Walls')
     displayWalls(1, tupleWallList, 3)
-    #Absolute Value Difference
     absoluteValueDifference()
     percentageDifference()
-    #Walls by hand
+    averageDifference()
     #Contribution to weight
     #Weighted Percentage
     #Weighted Difference Avergage
@@ -107,6 +103,17 @@ def percentageDifference():
         percentageList.append(percent)
         worksheet.write(5, col, percent)
         col += 1
+
+def averageDifference():
+    wallsByHand = 0
+    differenceSum = 0
+    for value in differenceList:
+        if value != 0:
+            wallsByHand += 1
+            differenceSum += value
+    difference = differenceSum / wallsByHand
+    worksheet.write('A7', 'Average difference')
+    worksheet.write(6, 1, difference)
 
 
 
