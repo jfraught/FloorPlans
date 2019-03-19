@@ -1,6 +1,7 @@
 import json
 import xlsxwriter
-import os
+import os, os.path
+
 
 
 
@@ -15,10 +16,15 @@ percent_fmt = workbook.add_format({'num_format': '0.00%'})
 
 #Get JSON Function
 #Loop through folder of JSON files and add a worksheet to the workbook for each. 
-path = '/Users/i25203/Downloads/Good Floor Plans/JSON/FloorPlanLog[12].json'
+
 def getFilePath():
-    return 0
-    
+    directory = '/Users/i25203/Desktop/JSON'
+    files = []
+    for dirpath, dirname, filenames in os.walk(directory):
+        print(len(filenames))
+    fileName = directory + "/" + filenames[6]
+    return fileName
+
 def getJSONFile(path):
     jsonFloorPlan = ''
     with open(path, 'r') as f:
@@ -32,6 +38,7 @@ def getJSONFile(path):
 
 #def makeWorkbook():
 #def makeWorksheet();
+    #Remember TODO handle floor plans with no differences. 
 #def metersToFeetandInches(meters):
 
 def formatExcel():
@@ -197,6 +204,7 @@ def roomsCount():
     worksheet.write(0, 1, len(roomList))
 
 #Variables
+path = getFilePath()
 jsonFloorPlan = getJSONFile(path)
 floorPlanList = makeFloorPlanList(jsonFloorPlan)
 orthoWallsList = getWalls("orthorectified")
