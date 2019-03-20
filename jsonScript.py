@@ -2,38 +2,7 @@ import json
 import xlsxwriter
 import os, os.path
 
-
-
-
-
 #Workbook
-
-#Get JSON Function
-#Loop through folder of JSON files and add a worksheet to the workbook for each. 
-
-def getFilePath():
-    directory = '/Users/i25203/Desktop/JSON'
-    files = []
-    dirLength = 0
-    fileName = ''
-    for dirpath, dirname, filenames in os.walk(directory):
-        dirLength = (len(filenames))
-    for x in range(dirLength):
-        fileName = directory + "/" + filenames[x]
-        file = getJSONFile(fileName)
-        files.append(file)
-    return files
-
-def getJSONFile(path):
-    jsonFloorPlan = ''
-    with open(path, 'r') as f:
-        f_contents = f.read()
-        jsonFloorPlan = f_contents
-    return jsonFloorPlan
-
-
-
-#Make Excel Function
 
 def makeWorkbook():
     #Set up Workbook
@@ -50,44 +19,36 @@ def makeWorkbook():
         correctWallsList = getWalls("correctedMeasurment", floorPlanList)  
         if len(orthoWallsList) != len(correctWallsList):
             correctWallsList = fixCorrectedWallsList(correctWallsList)
-
-        groupWalls(orthoWallsList, correctWallsList)
+        tupleWallList = groupWalls(orthoWallsList, correctWallsList)
         differenceSum = wallsByHand(orthoWallsList, correctWallsList)
         if differenceSum != 0:
             name = "FP" + str(number)
             number += 1
-            makeWorksheet(name, workbook)
+            makeWorksheet(name, workbook, floorPlanList, orthoWallsList, tupleWallList)
     #Close workbook
     workbook.close()
 
-def makeWorksheet(name, workbook):
+def makeWorksheet(name, workbook, floorPlanList, orthoWallsList, tupleWallList):
     #Remember TODO handle floor plans with no differences. 
     worksheet = workbook.add_worksheet(name)
     worksheet.set_column(0,0,27)
     percent_fmt = workbook.add_format({'num_format': '0.00%'})
-    formatExcel(worksheet)
+    formatExcel(worksheet, floorPlanList, orthoWallsList, tupleWallList, percent_fmt)
     #Locacl Variables
 
-
-def formatExcel(worksheet):
-    roomsCount(worksheet)
-    wallCount(worksheet)
+def formatExcel(worksheet, floorPlanList, orthoWallsList, tupleWallList, percent_fmt):
+    roomsCount(worksheet, floorPlanList)
+    wallCount(worksheet, orthoWallsList)
     worksheet.write('A3', 'Ortho Walls in Feet')
     displayWalls(0, tupleWallList, 2, worksheet)
     worksheet.write('A4', 'Corrected Walls in Feet')
     displayWalls(1, tupleWallList, 3, worksheet)
-    absoluteValueDifference(worksheet)
-    percentageDifference(worksheet)
-    averageDifference(worksheet)
-    contributionToWeight(worksheet)
-    weightedPercentage(worksheet)
+    differenceList = absoluteValueDifference(worksheet, tupleWallList)
+    percentageList = percentageDifference(worksheet, tupleWallList, differenceList, percent_fmt)
+    averageDifference(worksheet, tupleWallList, differenceList)
+    contributionList = contributionToWeight(worksheet, tupleWallList, differenceList)
+    weightedPercentage(worksheet, percentageList, contributionList, percent_fmt)
     
-
-def makeFloorPlanList(jsonPlan):
-    pyFloorPlan = json.loads(jsonPlan)
-    floorPlanList = pyFloorPlan["floorPlans"]
-    return floorPlanList
-
 #Wall Functions
 
 def wallsByHand(ortho, correct):
@@ -117,17 +78,19 @@ def fixCorrectedWallsList(correctedWallsList):
         listCount -= 1
     return correctedWallsList
 
-def wallCount(worksheet):
+def wallCount(worksheet, orthoWallsList):
     worksheet.write('A2', 'Wall Count')
     worksheet.write('B2', len(orthoWallsList))
 
 def groupWalls(ortho, correct):
     index = 0
+    tupleWallList = []
     for wall in ortho:
         walls = (wall, correct[index])
         index += 1
         tupleWallList.append(walls)
     tupleWallList.sort(key = sortOrtho)
+    return tupleWallList
 
 def sortOrtho(val):
     return val[0]
@@ -138,8 +101,9 @@ def displayWalls(wallType, walls, row, worksheet):
         worksheet.write(row, col, wall[wallType])
         col += 1
         
-def absoluteValueDifference(worksheet):
+def absoluteValueDifference(worksheet, tupleWallList):
     col = 1
+    differenceList = []
     worksheet.write(4, 0, 'Absolute Value Difference in Inches')
     for x in range(len(tupleWallList)):
         tupleAtIndex = tupleWallList[x]
@@ -148,22 +112,28 @@ def absoluteValueDifference(worksheet):
         differenceInFeet = abs(orthoWall - correctWall)
         differenceInInches = feetToInches(differenceInFeet)
         differenceList.append(differenceInFeet)
-        worksheet.write(4, col, differenceInInches)
+        if differenceInInches != 0:
+            worksheet.write(4, col, differenceInInches)
         col += 1
+    return differenceList
         
-def percentageDifference(worksheet):
+def percentageDifference(worksheet, tupleWallList, differenceList, percent_fmt):
     worksheet.write(5, 0, 'Percentage Difference')
     worksheet.set_row(5, None, percent_fmt)
+    percentageList = []
     col = 1
     for x in range(len(tupleWallList)):
         tupleAtIndex = tupleWallList[x]
         orthoWall = tupleAtIndex[0]
         percent = differenceList[x] / orthoWall
         percentageList.append(percent)
-        worksheet.write(5, col, percent)
+        if percent != 0:
+            worksheet.write(5, col, percent)
         col += 1
+    return percentageList
+    
 
-def averageDifference(worksheet):
+def averageDifference(worksheet, tupleWallList, differenceList):
     wallsByHand = 0
     differenceSum = 0
     for value in differenceList:
@@ -172,12 +142,13 @@ def averageDifference(worksheet):
             differenceSum += value
     difference = differenceSum / wallsByHand
     differenceInInches = feetToInches(difference)
-    worksheet.write('A7', 'Average difference in Inches')
-    worksheet.write(6, 1, differenceInInches)
+    worksheet.write('A9', 'Average difference in Inches')
+    worksheet.write(8, 1, differenceInInches)
 
-def contributionToWeight(worksheet):
+def contributionToWeight(worksheet, tupleWallList, differenceList):
     orthoSum = 0
     contribution = 0
+    contributionList = []
     col = 1
     worksheet.write('A8', 'Contribution to weight')
     for x in range(len(tupleWallList)):
@@ -196,23 +167,24 @@ def contributionToWeight(worksheet):
             contribution = 0
         contributionList.append(contribution)
         col += 1
+    return contributionList
 
-def weightedPercentage(worksheet):
-    worksheet.write('A9', 'Weighted Percentage')
+def weightedPercentage(worksheet, percentageList, contributionList, percent_fmt):
+    worksheet.write('A7', 'Weighted Percentage')
     worksheet.write('A10', 'Weighted Difference Average')
     weightedPercentage = 0
     weightedPercentageAverage = 0
     col = 1
     listCount = 0
-    worksheet.set_row(8, None, percent_fmt)
+    worksheet.set_row(6, None, percent_fmt)
     worksheet.set_row(9, None, percent_fmt)
     for x in range(len(percentageList)):
         if percentageList[x] != 0:
             weightedPercentage = contributionList[x] * percentageList[x] 
             listCount += 1
+            worksheet.write(6, col, weightedPercentage)
         else:
             weightedPercentage = 0
-        worksheet.write(8, col, weightedPercentage)
         col += 1
         weightedPercentageAverage += weightedPercentage
     worksheet.write('B10', weightedPercentageAverage)
@@ -227,11 +199,11 @@ def feetToInches(feet):
 
 #Room Functions
 
-def roomsCount(worksheet):
+def roomsCount(worksheet, floorPlanList):
     roomList = []
     worksheet.write('A1', 'Room Count')
     roomNumber = 1
-    print(floorPlanList)
+    print(len(floorPlanList))
     for floor in floorPlanList:
         if floor["type"] == "orthorectified":
             rooms = floor["rooms"]
@@ -240,15 +212,35 @@ def roomsCount(worksheet):
                 roomList.append(room)
     worksheet.write(0, 1, len(roomList))
 
+#JSON Functions
+
+def getFilePath():
+    directory = '/Users/i25203/Desktop/JSON'
+    files = []
+    dirLength = 0
+    fileName = ''
+    for dirpath, dirname, filenames in os.walk(directory):
+        dirLength = (len(filenames))
+    for x in range(dirLength):
+        fileName = directory + "/" + filenames[x]
+        file = getJSONFile(fileName)
+        files.append(file)
+    return files
+
+def getJSONFile(path):
+    jsonFloorPlan = ''
+    with open(path, 'r') as f:
+        f_contents = f.read()
+        jsonFloorPlan = f_contents
+    return jsonFloorPlan
+
+def makeFloorPlanList(jsonPlan):
+    pyFloorPlan = json.loads(jsonPlan)
+    floorPlanList = pyFloorPlan["floorPlans"]
+    return floorPlanList
+
 #Global
-tupleWallList = []
-differenceList = []
-percentageList = [] 
-contributionList = []
-weightedPercentagList = []
-floorPlanList = []
-orthoWallsList = []
-correctWallsList = [] 
+
 percent_fmt = ''
 
 makeWorkbook()
