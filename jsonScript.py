@@ -19,19 +19,20 @@ def makeWorkbook():
         correctWallsList = getWalls("correctedMeasurment", floorPlanList)  
         if len(orthoWallsList) != len(correctWallsList):
             correctWallsList = fixCorrectedWallsList(correctWallsList)
-        tupleWallList = groupWalls(orthoWallsList, correctWallsList)
-        differenceSum = wallsByHand(orthoWallsList, correctWallsList)
-        if differenceSum != 0:
-            name = "FP" + str(number)
-            number += 1
-            makeWorksheet(name, workbook, floorPlanList, orthoWallsList, tupleWallList)
+        if len(correctWallsList) != 0:
+            tupleWallList = groupWalls(orthoWallsList, correctWallsList)
+            differenceSum = wallsByHand(orthoWallsList, correctWallsList)
+            if differenceSum != 0:
+                name = "FP" + str(number)
+                number += 1
+                makeWorksheet(name, workbook, floorPlanList, orthoWallsList, tupleWallList)
     #Close workbook
     workbook.close()
 
 def makeWorksheet(name, workbook, floorPlanList, orthoWallsList, tupleWallList):
     #Remember TODO handle floor plans with no differences. 
     worksheet = workbook.add_worksheet(name)
-    worksheet.set_column(0,0,27)
+    worksheet.set_column(0,0,40)
     percent_fmt = workbook.add_format({'num_format': '0.00%'})
     formatExcel(worksheet, floorPlanList, orthoWallsList, tupleWallList, percent_fmt)
     #Locacl Variables
@@ -150,7 +151,7 @@ def contributionToWeight(worksheet, tupleWallList, differenceList):
     contribution = 0
     contributionList = []
     col = 1
-    worksheet.write('A8', 'Contribution to weight')
+    worksheet.write('A8', 'Contribution to weight (orthoWall / orthoWallSum)')
     for x in range(len(tupleWallList)):
         tupleAtIndex = tupleWallList[x]
         orthoWall = tupleAtIndex[0]
