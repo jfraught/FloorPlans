@@ -12,6 +12,11 @@ def makeWorkbook():
     weightedPercentageList = []
     totalRoomCount = 0
     totalWallCount = 0 
+    wallGroupsDifferenceList = []
+    wallsAvg25List = []
+    wallsAvg15List = []
+    wallsAvg5List = []
+    wallsAvg0List = []
     #loop through files
     files = getFilePath()
     number = 1
@@ -35,7 +40,16 @@ def makeWorkbook():
                 weightedPercentageList.append(summaryList[1])
                 totalRoomCount += summaryList[2]
                 totalWallCount += summaryList[3]
-    summaryWorksheet(workbook, totalRoomCount, totalWallCount, weightedPercentageList, averageDifferenceList, floorPlans)
+                #Wall Groups For Summary
+                wallGroupsDifferenceList = differenceInWallGroups(tupleWallList)
+                wallsGroupsAvgDifferenceList = avgDifferenceInWallGroups(wallGroupsDifferenceList)
+                wallsAvg25List.append(wallsGroupsAvgDifferenceList[0])
+                wallsAvg15List.append(wallsGroupsAvgDifferenceList[1])
+                wallsAvg5List.append(wallsGroupsAvgDifferenceList[2])
+                wallsAvg0List.append(wallsGroupsAvgDifferenceList[3])
+    groupsAvgListsList = [wallsAvg0List, wallsAvg5List, wallsAvg15List, wallsAvg25List]
+    #Make Summary
+    summaryWorksheet(workbook, totalRoomCount, totalWallCount, weightedPercentageList, averageDifferenceList, floorPlans, groupsAvgListsList)
     #Close workbook
     workbook.close()
 
@@ -61,8 +75,9 @@ def formatExcel(worksheet, floorPlanList, orthoWallsList, tupleWallList, percent
     summaryList = [avgDif, wghtAvrPer, rooms, walls]
     return summaryList
 
-def summaryWorksheet(workbook, totalRoomCount, totalWallCount, weightedPercentageList, averageDifferenceList, floorPlans):
+def summaryWorksheet(workbook, totalRoomCount, totalWallCount, weightedPercentageList, averageDifferenceList, floorPlans, groupsAvgListsList):
     worksheet = workbook.add_worksheet('Summary')
+    worksheet.set_column(0,0,32)
     #Number of Floor Plans
     worksheet.write('A1', 'Number of Floor Plans')
     worksheet.write('B1', floorPlans)
@@ -75,19 +90,69 @@ def summaryWorksheet(workbook, totalRoomCount, totalWallCount, weightedPercentag
     #Average Difference in Inches
     worksheet.write('A4', 'Average Differnce in Inches per Wall')
     averageDifference = average(averageDifferenceList)
-    worksheet.write('B4', averageDifference)
+    worksheet.write('B4', round(averageDifference, 2))
     #Average Weighted Percentage Difference
     worksheet.write('A5', 'Weighted Percentage Difference per Wall')
     weightedPercentage = average(weightedPercentageList)
     percent_fmt = workbook.add_format({'num_format': '0.00%'})
     worksheet.set_row(4, None, percent_fmt)
     worksheet.write('B5', weightedPercentage)
+    # Wall < 5
+    worksheet.write('A6', 'Walls < 5ft Avg Difference per Wall')
+    avg0 = average(groupsAvgListsList[0])
+    worksheet.write('B6', round(avg0, 2))
+    # Wall < 5 > 15
+    worksheet.write('A7', '5ft < Walls < 15ft Avg Difference per Wall')
+    avg5 = average(groupsAvgListsList[1])
+    worksheet.write('B7', round(avg5, 2))
+    # Wall < 15 > 25
+    worksheet.write('A8', '15ft < Walls < 25ft Avg Difference per Wall')
+    avg15 = average(groupsAvgListsList[2])
+    worksheet.write('B8', round(avg15, 2))
+    # Wall > 25
+    worksheet.write('A9', '25ft < Walls Avg Difference per Wall')
+    avg25 = average(groupsAvgListsList[3])
+    worksheet.write('B9', round(avg25, 2))
     return 0
 
 def average(x):
     return sum(x) / len(x)
 
 #Wall Functions
+def avgDifferenceInWallGroups(wallGroupsDifferenceList):
+    avgDifferenceList = []
+    avgDifference = 0
+    for differenceList in wallGroupsDifferenceList:
+        if len(differenceList) != 0:
+           avgDifference = average(differenceList)
+        else:
+            avgDifference = 0
+        avgDifferenceList.append(avgDifference)
+    return avgDifferenceList
+
+def differenceInWallGroups(tupleWallList):
+    greaterThan25List = []
+    greaterThan15List = []
+    greaterThan5List = []
+    lessThan5List = []
+    for x in range(len(tupleWallList)):
+        tupleAtIndex = tupleWallList[x]
+        orthoWall = tupleAtIndex[0]
+        correctedWall = tupleAtIndex[1]
+        orthoFeet = metersTofFeet(orthoWall)
+        correctedFeet = metersTofFeet(correctedWall)
+        difference = abs(orthoFeet - correctedFeet)
+        differenceInInches = feetToInches(difference)
+        if orthoFeet > 25:
+            greaterThan25List.append(differenceInInches)
+        elif orthoFeet > 15:
+            greaterThan15List.append(differenceInInches)
+        elif orthoFeet > 5:
+            greaterThan5List.append(differenceInInches)
+        else:   
+            lessThan5List.append(differenceInInches)
+    print(len(greaterThan25List))
+    return [greaterThan25List, greaterThan15List, greaterThan5List, lessThan5List]
 
 def wallsByHand(ortho, correct):
     totalDifference = 0
@@ -96,7 +161,6 @@ def wallsByHand(ortho, correct):
         totalDifference += difference
     return totalDifference
         
-
 def getWalls(type, floorPlanList): 
     wallsList = []
     for floor in floorPlanList:
@@ -171,7 +235,6 @@ def percentageDifference(worksheet, tupleWallList, differenceList, percent_fmt):
         col += 1
     return percentageList
     
-
 def averageDifference(worksheet, tupleWallList, differenceList):
     wallsByHand = 0
     differenceSum = 0
@@ -280,9 +343,7 @@ def makeFloorPlanList(jsonPlan):
     floorPlanList = pyFloorPlan["floorPlans"]
     return floorPlanList
 
-#Global
-
-percent_fmt = ''
+#To remove ds.store files after placing new group of logs in folder run "find . -name '.DS_Store' -type f -delete" in terminal. 
 
 makeWorkbook()
 
