@@ -1,6 +1,7 @@
 import json
 import xlsxwriter
 import os, os.path
+from xlsxwriter.utility import xl_rowcol_to_cell
 
 #Workbook
 
@@ -54,8 +55,9 @@ def makeWorkbook():
     workbook.close()
 
 def makeWorksheet(name, workbook, floorPlanList, orthoWallsList, tupleWallList):
+    print(name)
     worksheet = workbook.add_worksheet(name)
-    worksheet.set_column(0,0,40)
+    worksheet.set_column(0,0,27)
     percent_fmt = workbook.add_format({'num_format': '0.00%'})
     summaryList = formatExcel(worksheet, floorPlanList, orthoWallsList, tupleWallList, percent_fmt)
     return summaryList
@@ -215,8 +217,10 @@ def absoluteValueDifference(worksheet, tupleWallList):
         differenceInFeet = abs(orthoWall - correctWall)
         differenceInInches = feetToInches(differenceInFeet)
         differenceList.append(differenceInFeet)
-        if differenceInInches != 0:
-            worksheet.write(4, col, differenceInInches)
+        cellFour = xl_rowcol_to_cell(3, col)
+        cellThree = xl_rowcol_to_cell(2, col)
+        formulaString = "=ABS(" + str(cellThree) + "-" + str(cellFour) + ") * 12"
+        worksheet.write(4, col, formulaString)
         col += 1
     return differenceList
         
@@ -231,7 +235,10 @@ def percentageDifference(worksheet, tupleWallList, differenceList, percent_fmt):
         percent = differenceList[x] / orthoWall
         percentageList.append(percent)
         if percent != 0:
-            worksheet.write(5, col, percent)
+            cellFive = xl_rowcol_to_cell(4, col)
+            cellThree = xl_rowcol_to_cell(2, col)
+            formulaString = "=" + str(cellFive) + "/" + str(cellThree) + "/ 12" 
+            worksheet.write(5, col, formulaString)
         col += 1
     return percentageList
     
@@ -245,7 +252,7 @@ def averageDifference(worksheet, tupleWallList, differenceList):
     difference = differenceSum / wallsByHand
     differenceInInches = feetToInches(difference)
     worksheet.write('A9', 'Average difference in Inches')
-    worksheet.write(8, 1, differenceInInches)
+    worksheet.write_formula('B9', '=SUM(B5:CA5)/COUNTIF(B5:CA5, ">0")')
     return differenceInInches
 
 def contributionToWeight(worksheet, tupleWallList, differenceList):
@@ -253,7 +260,7 @@ def contributionToWeight(worksheet, tupleWallList, differenceList):
     contribution = 0
     contributionList = []
     col = 1
-    worksheet.write('A8', 'Contribution to weight (orthoWall / orthoWallSum)')
+    worksheet.write('A8', 'Contribution to weight')
     for x in range(len(tupleWallList)):
         tupleAtIndex = tupleWallList[x]
         orthoWall = tupleAtIndex[0]
@@ -265,7 +272,9 @@ def contributionToWeight(worksheet, tupleWallList, differenceList):
         difference = differenceList[x]
         if difference != 0.0:
             contribution = orthoWall / orthoSum
-            worksheet.write(7, col, contribution)
+            cell = xl_rowcol_to_cell(2, col)
+            formulaString = "=" + str(cell) + "/SUMIF(B5:CA5,\"<>0\",B3:CA3)"
+            worksheet.write_formula(7, col, formulaString)
         else: 
             contribution = 0
         contributionList.append(contribution)
@@ -285,12 +294,15 @@ def weightedPercentage(worksheet, percentageList, contributionList, percent_fmt)
         if percentageList[x] != 0:
             weightedPercentage = contributionList[x] * percentageList[x] 
             listCount += 1
-            worksheet.write(6, col, weightedPercentage)
+            cellEight = xl_rowcol_to_cell(7, col) 
+            cellSix =  xl_rowcol_to_cell(5, col)
+            formulaString = "=" + str(cellEight) + "*" + str(cellSix)
+            worksheet.write_formula(6, col, formulaString)
         else:
             weightedPercentage = 0
         col += 1
         weightedPercentageAverage += weightedPercentage
-    worksheet.write('B10', weightedPercentageAverage)
+    worksheet.write_formula('B10', '=SUM(B7:CA7)')
     return weightedPercentageAverage
 
 def metersTofFeet(meters):
@@ -327,6 +339,7 @@ def getFilePath():
         dirLength = (len(filenames))
     for x in range(dirLength):
         fileName = directory + "/" + filenames[x]
+        print(fileName)
         file = getJSONFile(fileName)
         files.append(file)
     return files
